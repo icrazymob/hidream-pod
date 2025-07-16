@@ -1,0 +1,56 @@
+# Конфигурация для H200 SXM (141GB VRAM)
+# Адаптирована под 20 vCPU, 251GB RAM
+# Оптимизирована для максимальной производительности
+
+output_dir = '/workspace/output'
+dataset = 'dataset.toml'
+epochs = 8  # Меньше эпох благодаря большему batch size
+micro_batch_size_per_gpu = 6  # Увеличено для H200 SXM
+pipeline_stages = 1
+gradient_accumulation_steps = 2  # Увеличено для стабильности
+gradient_clipping = 1.0
+warmup_steps = 50  # Меньше благодаря большему batch size
+blocks_to_swap = 12  # Меньше благодаря большему VRAM
+eval_every_n_epochs = 1
+eval_before_first_step = true
+save_every_n_epochs = 1
+checkpoint_every_n_epochs = 1
+activation_checkpointing = false  # Отключено для H200 SXM
+partition_method = 'parameters'
+save_dtype = 'bfloat16'
+caching_batch_size = 4  # Увеличено для H200 SXM
+steps_per_print = 1
+video_clip_mode = 'single_beginning'
+
+[model]
+type = 'hidream'
+diffusers_path = "HiDream-ai/HiDream-I1-Full"
+llama3_path = "unsloth/Meta-Llama-3.1-8B-Instruct"
+llama3_4bit = false  # Отключено для H200 SXM
+dtype = 'bfloat16'
+transformer_dtype = 'bfloat16'  # Полная точность для H200 SXM
+max_llama3_sequence_length = 512  # Увеличено для лучшего качества
+attn_implementation = 'flash_attention_2'
+
+[adapter]
+type = 'lora'
+rank = 128  # Увеличено для H200 SXM
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 3e-5  # Увеличено для более быстрой сходимости
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8
+
+[monitoring]
+enable_wandb = false
+
+# Адаптация для H200 SXM:
+# - 141GB VRAM, 20 vCPU, 251GB RAM
+# - Увеличенные batch_size и LoRA rank для лучшего качества
+# - Отключена квантизация для максимальной точности
+# - Отключен activation_checkpointing для скорости
+# - Ожидаемое время: ~15-20 минут на эпоху
+# - Оптимизировано для профессионального качества

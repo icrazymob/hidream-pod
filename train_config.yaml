@@ -1,0 +1,90 @@
+# Конфигурация для тренировки LoRA лица человека на H200 SXM
+# Адаптирована под 141GB VRAM, 20 vCPU, 251GB RAM
+job: extension
+config:
+  name: "face_lora_hidream_verified"
+  process:
+    - type: 'sd_trainer'
+  training_folder: "output"
+  device: cuda:0
+
+  # LoRA конфигурация (оптимизирована для H200 SXM)
+  network:
+    type: "lora"
+    linear: 128  # Увеличенный rank для H200 SXM
+    linear_alpha: 64
+    network_kwargs:
+      ignore_if_contains:
+        - "ff_i.experts"
+        - "ff_i.gate"
+
+  # Настройки сохранения
+  save:
+    dtype: bfloat16
+    save_every: 100  # Каждые 100 шагов для контроля
+    max_step_saves_to_keep: 5
+
+  # Конфигурация датасета (оптимизирована для H200 SXM)
+  datasets:
+    - folder_path: "/workspace/training_data"
+      caption_ext: "txt"
+      caption_dropout_rate: 0.05
+      resolution: [1024]  # Фиксированное разрешение 1024x1024
+      random_crop: false
+      center_crop: true
+      random_flip: true
+      num_repeats: 1  # Меньше повторов благодаря большему batch size
+
+  # Настройки тренировки для H200 SXM
+  train:
+    batch_size: 6  # Увеличенный batch size для H200 SXM
+    steps: 600  # Меньше шагов благодаря большему batch size
+    gradient_accumulation_steps: 2  # Увеличено для стабильности
+    train_unet: true
+    train_text_encoder: false  # Не работает с HiDream
+    gradient_checkpointing: false  # Отключено для H200 SXM
+    noise_scheduler: "flowmatch"
+    timestep_type: shift
+    optimizer: "adamw"
+    lr: 3e-5  # Увеличенный learning rate
+    lr_scheduler: "constant_with_warmup"
+    lr_warmup_steps: 50  # Меньше warmup steps
+    weight_decay: 0.01
+    gradient_clipping: 1.0
+
+  # EMA отключен (как в оригинале)
+  ema_config:
+    use_ema: false
+
+  # Точность вычислений (проверена)
+  dtype: bf16
+
+  # Конфигурация модели для H200 SXM
+  model:
+    name_or_path: "HiDream-ai/HiDream-I1-Full"
+    extras_name_or_path: "HiDream-ai/HiDream-I1-Full"
+    arch: "hidream"
+    quantize: false  # Отключаем квантизацию для H200 SXM
+    quantize_te: false
+    model_kwargs:
+      llama_model_path: "unsloth/Meta-Llama-3.1-8B-Instruct"
+      llama3_4bit: false  # Отключено для H200 SXM
+      transformer_dtype: "bfloat16"  # Полная точность
+      max_llama3_sequence_length: 512  # Увеличено для лучшего качества
+      attn_implementation: "flash_attention_2"
+      torch_dtype: "bfloat16"
+
+  # Настройки семплирования
+  sample:
+    sampler: "flowmatch"
+    sample_every: 50  # Более частые проверки для H200 SXM
+    width: 1024
+    height: 1024
+    prompts:
+      - "portrait [trigger], high quality, detailed face"
+      - "[trigger] close-up, professional photo"
+      - "photo [trigger], studio lighting, 1024x1024"
+      - "[trigger] full body, professional photography"
+    seed: 42
+    walk_seed: true
+    guidance_scale: 3.5
